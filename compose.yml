@@ -1,0 +1,54 @@
+version: "3"
+
+networks:
+  djangonetwork:
+    driver: bridge
+
+services:
+  nginx:
+    build: ./Docker/nginx
+    ports:
+      - 80:80
+    depends_on:
+      - app
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+    networks:
+      - djangonetwork
+
+  app:
+    command: "poetry run gunicorn task_manager.wsgi:application --bind 0.0.0.0:8000"
+    build: 
+      context: ./
+      dockerfile: ./Docker/Dockerfile
+    depends_on:
+      - db
+    links:
+      - db:db
+    volumes:
+      - static_volume:/home/app/web/staticfiles
+    expose:
+      - 8000
+    networks:
+      - djangonetwork
+    environment:
+      - DATABASE=${DATABASE}
+      - SQL_HOST=${SQL_HOST}
+      - SQL_PORT=${SQL_PORT}
+      - DJANGO_SUPERUSER_USERNAME=${DJANGO_SUPERUSER_USERNAME}
+      - DJANGO_SUPERUSER_EMAIL=${DJANGO_SUPERUSER_EMAIL}
+      - DJANGO_SUPERUSER_PASSWORD=${DJANGO_SUPERUSER_PASSWORD}
+  db:
+    image: postgres:15
+    networks:
+      - djangonetwork
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=${SQL_USER}
+      - POSTGRES_PASSWORD=${SQL_PASSWORD}
+      - POSTGRES_DB=${SQL_DATABASE}
+
+volumes:
+  postgres_data:
+  static_volume:
